@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const nodeVersion = "22.19.0";
+const nodeVersion = "22.23.4";
 const compiler = "x86_64-w64-mingw32-g++";
 const cache = join(homedir(), ".cache", "rea-windows-native");
 const output = join(root, "native", "windows", "build");

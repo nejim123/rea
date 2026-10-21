@@ -30,38 +30,6 @@ describe("curl installer scenarios", { timeout: 20_000 }, () => {
     expect(await readdir(fixture.temporary)).toEqual([]);
   });
 
-  it.each(["22.19.0", "24.11.0", "26.0.0"])(
-    "accepts supported Node %s without installing or replacing it",
-    async (version) => {
-      const fixture = await createFixture();
-      const result = await runInstaller(
-        fixture,
-        ["--version", "0.3.0", "--dry-run"],
-        {
-          FAKE_NODE_VERSION: version,
-        },
-      );
-      expect(result.stdout).toContain(`Runtime: Node.js ${version}`);
-    },
-  );
-
-  it.each(["22.18.9", "24.10.9", "23.0.0", "26.0.0-rc.1"])(
-    "rejects unsupported Node %s before invoking npm",
-    async (version) => {
-      const fixture = await createFixture();
-      await expect(
-        runInstaller(fixture, ["--version", "0.3.0"], {
-          FAKE_NODE_VERSION: version,
-        }),
-      ).rejects.toMatchObject({
-        stderr: expect.stringContaining(`Node.js ${version} is unsupported`),
-      });
-      await expect(readFile(fixture.npmLog, "utf8")).rejects.toMatchObject({
-        code: "ENOENT",
-      });
-    },
-  );
-
   it("resolves and validates the latest REA release tag", async () => {
     const fixture = await createFixture();
     const result = await runInstaller(fixture);
@@ -87,7 +55,7 @@ describe("curl installer scenarios", { timeout: 20_000 }, () => {
       "unsupported Node",
       ["--version", "0.3.0"],
       { FAKE_NODE_VERSION: "20.0.0" },
-      "REA installation failed: Node.js 20.0.0 is unsupported; use Node.js 22.x (>=22.19), 24.x (>=24.11), or 26+.\n",
+      "REA installation failed: Node.js 20.0.0 is unsupported; use Node.js 22.x (>=22.23.4), 24.x (>=24.22.1), or 26+ (>=26.12.1).\n",
     ],
     [
       "unreadable Node version",
@@ -168,6 +136,59 @@ describe("curl installer scenarios", { timeout: 20_000 }, () => {
     ).rejects.toMatchObject({
       stderr:
         "REA installation failed: curl is required. Install curl, then rerun this installer.\n",
+    });
+  });
+});
+
+describe("installer Node runtime support", { timeout: 20_000 }, () => {
+  it.each([
+    "22.23.4",
+    "24.22.1",
+    "26.12.1",
+    "22.24.0",
+    "24.23.0",
+    "26.13.0",
+    "27.0.0",
+    "24.22.1+build.1",
+  ])(
+    "accepts supported Node %s without installing or replacing it",
+    async (version) => {
+      const fixture = await createFixture();
+      const result = await runInstaller(
+        fixture,
+        ["--version", "0.3.0", "--dry-run"],
+        {
+          FAKE_NODE_VERSION: version,
+        },
+      );
+      expect(result.stdout).toContain(`Runtime: Node.js ${version}`);
+    },
+  );
+
+  it.each([
+    "22.18.9",
+    "22.19.0",
+    "22.23.3",
+    "24.10.9",
+    "24.11.0",
+    "24.22.0",
+    "23.0.0",
+    "25.1.0",
+    "26.0.0",
+    "26.12.0",
+    "24.22.1-rc.1",
+    "26.12.1-rc.1",
+  ])("rejects unsupported Node %s before invoking npm", async (version) => {
+    const fixture = await createFixture();
+    await expect(
+      runInstaller(fixture, ["--version", "0.3.0"], {
+        FAKE_NODE_VERSION: version,
+      }),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(`Node.js ${version} is unsupported`),
+    });
+    await expect(readFile(fixture.npmLog, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
     });
   });
 });
@@ -315,7 +336,7 @@ const createFixture = async (): Promise<InstallerFixture> => {
     executable(
       join(bin, "node"),
       `#!/bin/sh
-if [ "$1" = "-p" ]; then printf '%s\n' "\${FAKE_NODE_VERSION:-24.18.0}"; else exec ${shellQuote(process.execPath)} "$@"; fi
+if [ "$1" = "-p" ]; then printf '%s\n' "\${FAKE_NODE_VERSION:-24.22.1}"; else exec ${shellQuote(process.execPath)} "$@"; fi
 `,
     ),
     executable(
